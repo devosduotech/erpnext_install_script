@@ -221,6 +221,10 @@ echo 'export PATH="$HOME/.local/bin:$PATH"' >> ~/.bashrc
 
 MIT License
 
+## Troubleshooting
+
+See [TROUBLESHOOTING.md](./TROUBLESHOOTING.md) for solutions to common errors encountered during installation.
+
 ## Support
 
 - [ERPNext Forum](https://discuss.frappe.io)
