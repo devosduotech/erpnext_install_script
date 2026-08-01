@@ -78,7 +78,7 @@ init-connect = 'SET NAMES utf8mb4'
 character-set-server = utf8mb4
 collation-server = utf8mb4_unicode_ci
 
-bind-address = 0.0.0.0
+bind-address = 127.0.0.1
 innodb-file-per-table = 1
 innodb-buffer-pool-size = ${BUFFER_POOL_MB}M
 innodb-buffer-pool-instances = ${BUFFER_POOL_INSTANCES}
@@ -98,7 +98,6 @@ max-allowed-packet = 256M
 max-connect-errors = 1000000
 
 skip-name-resolve
-lower_case_table_names = 1
 
 query-cache-type = 0
 query-cache-size = 0
@@ -142,7 +141,7 @@ create_optimization_indexes() {
     log_info "Creating recommended indexes for ERPNext..."
     
     BENCH_DIR="$HOME/frappe-bench"
-    SITE_NAME=$(ls "$BENCH_DIR/sites" 2>/dev/null | head -1)
+    SITE_NAME=$(find "$BENCH_DIR/sites" -maxdepth 2 -name site_config.json 2>/dev/null | head -1 | xargs dirname | xargs basename)
     
     if [[ -z "$SITE_NAME" ]] || [[ ! -d "$BENCH_DIR/sites/$SITE_NAME" ]]; then
         log_warn "Could not detect Frappe site. Skipping index creation."
@@ -255,6 +254,7 @@ main() {
     
     optimize_mariadb_config
     optimize_mariadb
+    optimize_redis
     
     if [[ -d "$HOME/frappe-bench" ]]; then
         configure_gunicorn_workers

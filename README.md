@@ -17,7 +17,7 @@ Automated bare-metal installation script for ERPNext on Ubuntu VPS and dedicated
 From a fresh Ubuntu machine with a non-root sudo user:
 
 ```bash
-wget -qO- https://raw.githubusercontent.com/YOUR_REPO/erpnext_script/main/install_frappe.sh | bash -s -- --site erp.example.com
+wget -qO- https://raw.githubusercontent.com/devosduotech/erpnext_install_script/main/install_frappe.sh | bash -s -- --site erp.example.com
 ```
 
 ### Examples

@@ -137,8 +137,8 @@ parse_cli_args() {
                 echo "  --help, -h              Show this help"
                 echo ""
                 echo "One-liner examples:"
-                echo "  curl -s https://url/install_frappe.sh | bash -s -- --site erp.example.com --version 15"
-                echo "  wget -qO- https://url/install_frappe.sh | bash -s -- --site erp.example.com --version 15 --mode production --apps erpnext,hrms"
+                echo "  curl -s https://raw.githubusercontent.com/devosduotech/erpnext_install_script/main/install_frappe.sh | bash -s -- --site erp.example.com --version 15"
+                echo "  wget -qO- https://raw.githubusercontent.com/devosduotech/erpnext_install_script/main/install_frappe.sh | bash -s -- --site erp.example.com --version 15 --mode production --apps erpnext,hrms"
                 exit 0
                 ;;
             *)
@@ -443,7 +443,7 @@ EOF
     TOTAL_RAM=$(free -g | awk '/^Mem:/{print $2}')
     BUFFER_POOL=$((TOTAL_RAM / 2))
     [[ $BUFFER_POOL -lt 1 ]] && BUFFER_POOL=1
-    [[ $BUFFER_POOL -gt 4 ]] && BUFFER_POOL=4
+    [[ $BUFFER_POOL -gt 12 ]] && BUFFER_POOL=12
     log_info "InnoDB buffer pool: ${BUFFER_POOL}G"
     
     sudo tee /etc/mysql/mariadb.conf.d/50-frappe.cnf > /dev/null << EOF
@@ -455,10 +455,9 @@ innodb-flush-log-at-trx-commit=2
 character-set-client-handshake = FALSE
 character-set-server = utf8mb4
 collation-server = utf8mb4_unicode_ci
-bind-address = 0.0.0.0
+bind-address = 127.0.0.1
 max_connections = 500
 skip-name-resolve
-lower_case_table_names = 1
 
 [mysql]
 default-character-set = utf8mb4
@@ -567,11 +566,8 @@ initialize_bench() {
     
     cd frappe-bench
     
-    log_info "Installing sass for asset build support..."
-    yarn add sass
-    
     log_info "Setting permissions for bench..."
-    chmod -R o+rx "$HOME"
+    chmod -R 755 "$HOME/frappe-bench"
     
     bench config dns_multitenant on
     bench config restart_supervisor_on_update off
@@ -631,10 +627,6 @@ create_site() {
     ensure_nvm
     ensure_path
 
-    log_info "Starting bench services..."
-    bench start &>/tmp/bench-start.log &
-    sleep 10
-
     bench new-site "$SITE_DOMAIN" \
         --db-password "$MARIADB_ROOT_PASSWORD" \
         --admin-password "$ADMIN_PASSWORD"
@@ -646,11 +638,6 @@ create_site() {
     done
     
     bench --site "$SITE_DOMAIN" enable-scheduler
-
-    log_info "Stopping bench services..."
-    pkill -f "honcho start" 2>/dev/null || true
-    pkill -f "frappe-bench" 2>/dev/null || true
-    sleep 2
     
     log_success "Site created: $SITE_DOMAIN"
     
@@ -738,8 +725,46 @@ EOF
     chmod 600 "$pwfile"
 }
 
+run_health_check() {
+    log_step "Running health checks..."
+    cd "$HOME/frappe-bench" 2>/dev/null || return
+    ensure_nvm
+    ensure_path
+
+    local checks_passed=0 checks_total=0
+    
+    check() {
+        local label="$1"; shift
+        checks_total=$((checks_total + 1))
+        if "$@" &>/dev/null; then
+            echo -e "  ${GREEN}OK${NC}    $label"
+            checks_passed=$((checks_passed + 1))
+        else
+            echo -e "  ${RED}WARN${NC}  $label"
+        fi
+    }
+
+    echo ""
+    check "MariaDB running"    sudo systemctl is-active mariadb 2>/dev/null || sudo systemctl is-active mysql
+    check "Redis running"      sudo systemctl is-active redis-server 2>/dev/null || sudo systemctl is-active redis
+    check "Nginx installed"    command -v nginx
+    check "Site directory"     test -d "$HOME/frappe-bench/sites/$SITE_DOMAIN"
+    check "Frappe app"         test -d "$HOME/frappe-bench/apps/frappe"
+    check "Bench CLI"          bench --version
+    check "Bench doctor"       bench doctor 2>/dev/null || true
+
+    if [[ "$INSTALL_MODE" == "production" ]]; then
+        check "Supervisor running" sudo supervisorctl status 2>/dev/null
+        check "Nginx running"      sudo nginx -t 2>/dev/null
+    fi
+
+    echo ""
+    log_info "Health check: $checks_passed/$checks_total passed"
+}
+
 installation_complete() {
     save_passwords
+    run_health_check
     
     echo ""
     echo "═══════════════════════════════════════════════════════════════════════"
