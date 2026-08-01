@@ -681,6 +681,7 @@ create_site() {
     sleep 2
     
     bench --site "$SITE_DOMAIN" enable-scheduler
+    bench use "$SITE_DOMAIN"
     
     log_success "Site created: $SITE_DOMAIN"
     
@@ -817,15 +818,18 @@ installation_complete() {
     
     if [[ "$INSTALL_MODE" == "development" ]]; then
         echo "  To start: cd ~/frappe-bench && bench start"
-        echo "  Access: http://$SITE_DOMAIN:8000"
+        echo "  Access: http://$SITE_DOMAIN:8000/app/home"
     else
-        [[ "$SETUP_SSL" == "y" ]] && echo "  Access: https://$SITE_DOMAIN" || echo "  Access: http://$SITE_DOMAIN"
+        [[ "$SETUP_SSL" == "y" ]] && echo "  Access: https://$SITE_DOMAIN/app/home" || echo "  Access: http://$SITE_DOMAIN/app/home"
     fi
     echo ""
     echo "  Admin Login: Administrator"
     echo "  Password:    $ADMIN_PASSWORD"
     echo ""
     echo "  Credentials saved to: $HOME/frappe_passwords.txt"
+    echo ""
+    echo "  NOTE: If accessing via IP, add ?host=$SITE_DOMAIN to the URL"
+    echo "        or map it in /etc/hosts"
     echo ""
     echo "═══════════════════════════════════════════════════════════════════════"
 }
