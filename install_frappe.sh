@@ -448,8 +448,13 @@ setup_mariadb() {
     sudo systemctl start mariadb 2>/dev/null || sudo service mariadb start 2>/dev/null || sudo systemctl start mysql 2>/dev/null || true
     sleep 3
     
+    local mysql_cmd="sudo mysql -u root"
+    if ! $mysql_cmd -e "SELECT 1" &>/dev/null; then
+        mysql_cmd="sudo mysql -u root -p'$MARIADB_ROOT_PASSWORD'"
+    fi
+
     log_info "Securing MariaDB..."
-    sudo mysql -u root <<EOF
+    $mysql_cmd <<EOF
 DELETE FROM mysql.user WHERE User='';
 DROP DATABASE IF EXISTS test;
 DELETE FROM mysql.db WHERE Db='test' OR Db='test\\_%';
@@ -485,7 +490,7 @@ EOF
     sleep 2
     
     log_info "Configuring MariaDB root user..."
-    sudo mysql -u root <<EOF
+    $mysql_cmd <<EOF
 ALTER USER 'root'@'localhost' IDENTIFIED VIA mysql_native_password USING PASSWORD('$MARIADB_ROOT_PASSWORD');
 CREATE USER IF NOT EXISTS 'root'@'127.0.0.1' IDENTIFIED VIA mysql_native_password USING PASSWORD('$MARIADB_ROOT_PASSWORD');
 GRANT ALL PRIVILEGES ON *.* TO 'root'@'localhost' WITH GRANT OPTION;
@@ -650,12 +655,30 @@ create_site() {
     bench new-site "$SITE_DOMAIN" \
         --db-password "$MARIADB_ROOT_PASSWORD" \
         --admin-password "$ADMIN_PASSWORD"
+
+    log_info "Starting bench services for app installation..."
+    bench start &>/tmp/bench-start.log &
+    local bench_pid=$!
+
+    for i in $(seq 1 15); do
+        if redis-cli -p 11000 ping &>/dev/null 2>&1; then
+            log_info "Bench Redis ready (port 11000)"
+            break
+        fi
+        [[ $i -eq 15 ]] && log_warn "Bench Redis not responding, continuing anyway..."
+        sleep 2
+    done
     
     IFS=',' read -ra APPS <<< "$SELECTED_APPS"
     for app in "${APPS[@]}"; do
         log_info "Installing $app..."
         bench --site "$SITE_DOMAIN" install-app "$app"
     done
+
+    log_info "Stopping bench services..."
+    kill $bench_pid 2>/dev/null || true
+    pkill -f "bench start" 2>/dev/null || true
+    sleep 2
     
     bench --site "$SITE_DOMAIN" enable-scheduler
     
