@@ -351,7 +351,7 @@ install_system_dependencies() {
         sudo add-apt-repository ppa:deadsnakes/ppa -y
     fi
     
-    PYTHON_PKGS="python3-dev python3-setuptools python3-pip python3-distutils"
+    PYTHON_PKGS="python3-dev python3-setuptools python3-pip"
     if [[ "$FRAPPE_VERSION" == "14" ]]; then
         PYTHON_PKGS="$PYTHON_PKGS python3.10-venv python3.10-dev"
     elif [[ "$FRAPPE_VERSION" == "15" ]]; then
