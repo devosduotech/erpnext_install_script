@@ -377,18 +377,22 @@ install_system_dependencies() {
         WKHTML_DISTRO="jammy"
         [[ "$(lsb_release -rs 2>/dev/null)" == "24.04" ]] && WKHTML_DISTRO="noble"
         WKHTML_PACKAGE="wkhtmltox_${WKHTML_VER}.${WKHTML_DISTRO}_amd64.deb"
+        WKHTML_URL="https://github.com/wkhtmltopdf/packaging/releases/download/${WKHTML_VER}/${WKHTML_PACKAGE}"
+        log_info "Downloading: $WKHTML_URL"
         cd /tmp
-        wget -q "https://github.com/wkhtmltopdf/packaging/releases/download/${WKHTML_VER}/${WKHTML_PACKAGE}" -O "$WKHTML_PACKAGE" 2>/dev/null || true
-        if [[ -f "$WKHTML_PACKAGE" ]]; then
+        if wget -q "$WKHTML_URL" -O "$WKHTML_PACKAGE" 2>/dev/null && [[ -f "$WKHTML_PACKAGE" ]]; then
             sudo dpkg -i "$WKHTML_PACKAGE" 2>/dev/null || sudo apt --fix-broken install -y
             rm -f "$WKHTML_PACKAGE"
+        else
+            log_warn "wkhtmltopdf download failed, trying apt..."
+            sudo apt install -y wkhtmltopdf 2>/dev/null || true
         fi
         cd - > /dev/null
         
         if command -v wkhtmltopdf &> /dev/null; then
             log_success "wkhtmltopdf installed: $(wkhtmltopdf --version 2>&1 | head -1)"
         else
-            log_warn "wkhtmltopdf installation may have failed"
+            log_warn "wkhtmltopdf not installed — PDF generation may not work"
         fi
     else
         log_info "wkhtmltopdf already installed"
@@ -415,11 +419,25 @@ install_system_dependencies() {
 }
 
 setup_mariadb() {
-    log_step "Setting up MariaDB $MARIADB_VERSION..."
+    log_step "Setting up MariaDB..."
     
     if ! command -v mysql &> /dev/null; then
-        log_info "Adding official MariaDB $MARIADB_VERSION repo..."
-        curl -LsS https://r.mariadb.com/downloads/mariadb_repo_setup | sudo bash -s -- --mariadb-server-version="mariadb-$MARIADB_VERSION"
+        UBUNTU_VER=$(lsb_release -rs 2>/dev/null)
+        case "$UBUNTU_VER" in
+            22.04) MARIADB_VERSION="${MARIADB_VERSION:-10.6}" ;;
+            24.04) MARIADB_VERSION="${MARIADB_VERSION:-10.11}" ;;
+        esac
+        log_info "Target MariaDB version: $MARIADB_VERSION"
+        
+        if curl -sI "https://r.mariadb.com/downloads/mariadb_repo_setup" &>/dev/null; then
+            log_info "Adding official MariaDB $MARIADB_VERSION repo..."
+            curl -LsS https://r.mariadb.com/downloads/mariadb_repo_setup | sudo bash -s -- --mariadb-server-version="mariadb-$MARIADB_VERSION" 2>/dev/null || {
+                log_warn "MariaDB $MARIADB_VERSION repo failed, using system default"
+                MARIADB_VERSION="system"
+            }
+        else
+            MARIADB_VERSION="system"
+        fi
         
         log_info "Installing MariaDB..."
         sudo apt update
