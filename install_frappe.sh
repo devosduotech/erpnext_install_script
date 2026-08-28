@@ -532,15 +532,28 @@ install_bench() {
     PIP_MAJOR=$(echo "$PIP_VERSION" | cut -d. -f1)
     PIP_MINOR=$(echo "$PIP_VERSION" | cut -d. -f2)
     
-    PIP_FLAGS="--user"
-    if [[ $PIP_MAJOR -gt 23 ]] || [[ $PIP_MAJOR -eq 23 && $PIP_MINOR -ge 1 ]]; then
-        PIP_FLAGS="--break-system-packages --user"
+    UBUNTU_VER=$(lsb_release -rs 2>/dev/null)
+    if [[ "$UBUNTU_VER" == "24.04" ]]; then
+        log_info "Ubuntu 24.04 detected: installing frappe-bench globally with sudo + --break-system-packages"
+        sudo pip3 install frappe-bench --break-system-packages
+    else
+        log_info "Upgrading pip..."
+        pip3 install --upgrade pip --user 2>/dev/null || true
+        
+        PIP_VERSION=$(pip3 --version | awk '{print $2}')
+        PIP_MAJOR=$(echo "$PIP_VERSION" | cut -d. -f1)
+        PIP_MINOR=$(echo "$PIP_VERSION" | cut -d. -f2)
+        
+        PIP_FLAGS="--user"
+        if [[ $PIP_MAJOR -gt 23 ]] || [[ $PIP_MAJOR -eq 23 && $PIP_MINOR -ge 1 ]]; then
+            PIP_FLAGS="--break-system-packages --user"
+        fi
+        
+        log_info "Using pip version: $PIP_VERSION with flags: $PIP_FLAGS"
+        
+        log_info "Installing frappe-bench..."
+        pip3 install frappe-bench $PIP_FLAGS
     fi
-    
-    log_info "Using pip version: $PIP_VERSION with flags: $PIP_FLAGS"
-    
-    log_info "Installing frappe-bench..."
-    pip3 install frappe-bench $PIP_FLAGS
     
     export PATH="$HOME/.local/bin:$PATH"
     if ! grep -q '.local/bin' "$HOME/.bashrc" 2>/dev/null; then
@@ -591,8 +604,8 @@ initialize_bench() {
     
     cd frappe-bench
     
-    log_info "Setting permissions for bench..."
-    chmod -R 755 "$HOME/frappe-bench"
+    log_info "Setting permissions for bench (home directory o+rx for web access)..."
+    chmod -R o+rx "$HOME"
     
     bench config dns_multitenant on
     bench config restart_supervisor_on_update off
