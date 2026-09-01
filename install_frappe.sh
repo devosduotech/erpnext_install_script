@@ -454,9 +454,19 @@ setup_mariadb() {
     sudo systemctl start mariadb 2>/dev/null || sudo service mariadb start 2>/dev/null || sudo systemctl start mysql 2>/dev/null || true
     sleep 3
     
-    local mysql_cmd="sudo mysql -u root"
-    if ! $mysql_cmd -e "SELECT 1" &>/dev/null; then
-        mysql_cmd="sudo mysql -u root -p'$MARIADB_ROOT_PASSWORD'"
+    log_info "Testing MariaDB access..."
+    local mysql_cmd=""
+    if sudo mysql -u root -e "SELECT 1" &>/dev/null; then
+        mysql_cmd="sudo mysql -u root"
+        log_info "Using socket authentication for root"
+    elif sudo mysql -u root -p"${MARIADB_ROOT_PASSWORD}" -e "SELECT 1" &>/dev/null; then
+        mysql_cmd="sudo mysql -u root -p${MARIADB_ROOT_PASSWORD}"
+        log_info "Using password authentication for root"
+    else
+        log_error "Cannot connect to MariaDB as root"
+        log_info "Try: sudo mysql -u root"
+        log_info "Or reset: sudo mysqld_safe --skip-grant-tables &"
+        exit 1
     fi
 
     log_info "Securing MariaDB..."
