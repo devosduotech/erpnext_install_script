@@ -297,13 +297,19 @@ get_user_inputs() {
     echo ""
     read -p "Select apps [default: 1]: " app_selection
 
-    SELECTED_APPS="erpnext"
+    SELECTED_APPS=""
+    [[ "$app_selection" =~ [1] ]] && SELECTED_APPS="$SELECTED_APPS,erpnext"
     [[ "$app_selection" =~ [2] ]] && SELECTED_APPS="$SELECTED_APPS,hrms"
     [[ "$app_selection" =~ [3] ]] && SELECTED_APPS="$SELECTED_APPS,india_compliance"
     [[ "$app_selection" =~ [4] ]] && SELECTED_APPS="$SELECTED_APPS,crm"
     [[ "$app_selection" =~ [5] ]] && SELECTED_APPS="$SELECTED_APPS,payments"
     [[ "$app_selection" =~ [6] ]] && SELECTED_APPS="$SELECTED_APPS,wiki"
     [[ "$app_selection" =~ [7] ]] && SELECTED_APPS="$SELECTED_APPS,helpdesk"
+
+    # Default to erpnext if nothing selected
+    [[ -z "$SELECTED_APPS" ]] && SELECTED_APPS="erpnext"
+    # Remove leading comma if present
+    SELECTED_APPS="${SELECTED_APPS#,}"
 
     SETUP_SSL="n"
     SSL_EMAIL=""
