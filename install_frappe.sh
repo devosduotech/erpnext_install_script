@@ -224,7 +224,7 @@ get_user_inputs() {
     echo "Select Frappe Version:"
     echo "  [1] v14 (Legacy - Python 3.10, Node 18, MariaDB 10.6)"
     echo "  [2] v15 (Stable - Python 3.11, Node 18, MariaDB 10.6)"
-    echo "  [3] v16 (Latest - Python 3.12, Node 20, MariaDB 11.3)"
+    echo "  [3] v16 (Latest - Python 3.14, Node 20, MariaDB 11.3)"
     echo ""
     read -p "Enter version [1/2/3] (default: 2): " version_choice
 
