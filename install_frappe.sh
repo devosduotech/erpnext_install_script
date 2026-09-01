@@ -30,7 +30,7 @@ generate_password() {
 declare -A VERSION_CONFIG=(
     ["14"]="version-14|3.10|18|10.6|latest"
     ["15"]="version-15|3.11|18|10.6|latest"
-    ["16"]="version-16|3.14|20|11.3|latest"
+    ["16"]="version-16|3.14|24|11.8|latest"
 )
 
 log_info() { echo -e "${BLUE}[INFO]${NC} $1"; }
@@ -224,7 +224,7 @@ get_user_inputs() {
     echo "Select Frappe Version:"
     echo "  [1] v14 (Legacy - Python 3.10, Node 18, MariaDB 10.6)"
     echo "  [2] v15 (Stable - Python 3.11, Node 18, MariaDB 10.6)"
-    echo "  [3] v16 (Latest - Python 3.14, Node 20, MariaDB 11.3)"
+    echo "  [3] v16 (Latest - Python 3.14, Node 24, MariaDB 11.8)"
     echo ""
     read -p "Enter version [1/2/3] (default: 2): " version_choice
 
@@ -531,17 +531,23 @@ install_nodejs() {
 install_bench() {
     log_step "Installing Frappe Bench..."
     
-    log_info "Upgrading pip..."
-    pip3 install --upgrade pip --user 2>/dev/null || true
-    
-    PIP_VERSION=$(pip3 --version | awk '{print $2}')
-    PIP_MAJOR=$(echo "$PIP_VERSION" | cut -d. -f1)
-    PIP_MINOR=$(echo "$PIP_VERSION" | cut -d. -f2)
-    
-    UBUNTU_VER=$(lsb_release -rs 2>/dev/null)
-    if [[ "$UBUNTU_VER" == "24.04" ]]; then
-        log_info "Ubuntu 24.04 detected: installing frappe-bench globally with sudo + --break-system-packages"
-        sudo pip3 install frappe-bench --break-system-packages
+    if [[ "$FRAPPE_VERSION" == "16" ]]; then
+        log_info "Frappe v16: using uv for Python + bench management"
+        
+        if ! command -v uv &> /dev/null; then
+            log_info "Installing uv..."
+            curl -LsSf https://astral.sh/uv/install.sh | sh
+            export PATH="$HOME/.local/bin:$HOME/.cargo/bin:$PATH"
+            if ! grep -q '.cargo/bin' "$HOME/.bashrc" 2>/dev/null; then
+                echo 'export PATH="$HOME/.local/bin:$HOME/.cargo/bin:$PATH"' >> "$HOME/.bashrc"
+            fi
+        fi
+        
+        log_info "Installing Python 3.14 via uv..."
+        uv python install 3.14 --default
+        
+        log_info "Installing frappe-bench via uv tool..."
+        uv tool install frappe-bench
     else
         log_info "Upgrading pip..."
         pip3 install --upgrade pip --user 2>/dev/null || true
@@ -561,9 +567,9 @@ install_bench() {
         pip3 install frappe-bench $PIP_FLAGS
     fi
     
-    export PATH="$HOME/.local/bin:$PATH"
+    export PATH="$HOME/.local/bin:$HOME/.cargo/bin:$PATH"
     if ! grep -q '.local/bin' "$HOME/.bashrc" 2>/dev/null; then
-        echo 'export PATH="$HOME/.local/bin:$PATH"' >> "$HOME/.bashrc"
+        echo 'export PATH="$HOME/.local/bin:$HOME/.cargo/bin:$PATH"' >> "$HOME/.bashrc"
     fi
     
     if ! command -v bench &> /dev/null; then
@@ -599,9 +605,14 @@ initialize_bench() {
     
     [[ -d "$HOME/frappe-bench" ]] && rm -rf "$HOME/frappe-bench"
     
-    local python_cmd="/usr/bin/python${PYTHON_VERSION}"
-    log_info "Running: bench init frappe-bench --frappe-branch $FRAPPE_BRANCH --python $python_cmd"
-    bench init frappe-bench --frappe-branch "$FRAPPE_BRANCH" --python "$python_cmd"
+    if [[ "$FRAPPE_VERSION" == "16" ]]; then
+        log_info "Running: bench init frappe-bench (uv manages Python automatically)"
+        bench init frappe-bench
+    else
+        local python_cmd="/usr/bin/python${PYTHON_VERSION}"
+        log_info "Running: bench init frappe-bench --frappe-branch $FRAPPE_BRANCH --python $python_cmd"
+        bench init frappe-bench --frappe-branch "$FRAPPE_BRANCH" --python "$python_cmd"
+    fi
     
     if [[ ! -d "$HOME/frappe-bench/apps/frappe" ]]; then
         log_error "Bench initialization failed"

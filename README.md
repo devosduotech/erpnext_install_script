@@ -8,7 +8,7 @@ Automated bare-metal installation script for ERPNext on Ubuntu VPS and dedicated
 |---------|--------|---------|---------|--------|
 | **v14** (Legacy) | 3.10 | 18 | 10.6 | 22.04, 24.04 |
 | **v15** (Stable) | 3.11 | 18 | 10.6 | 22.04, 24.04 |
-| **v16** (Latest) | 3.14 | 20 | 11.3 | 22.04, 24.04 |
+| **v16** (Latest) | 3.14 | 24 | 11.8 | 24.04 |
 
 ---
 
