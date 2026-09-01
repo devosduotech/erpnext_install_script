@@ -2,7 +2,7 @@
 
 ###############################################################################
 # Frappe/ERPNext Database Optimization Script
-# Version: 2.0.0
+# Version: 2.1.0
 # Run on existing production servers to optimize MariaDB performance
 # Repo: https://github.com/devosduotech/erpnext_install_script
 ###############################################################################

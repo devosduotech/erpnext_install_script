@@ -2,7 +2,7 @@
 
 ###############################################################################
 # Frappe/ERPNext Installation Script
-# Version: 2.0.0
+# Version: 2.1.0
 # Supports: Ubuntu 22.04, 24.04 LTS, Debian 11+
 # Frappe Versions: v14, v15, v16
 # Repo: https://github.com/devosduotech/erpnext_install_script
@@ -43,7 +43,7 @@ print_banner() {
     echo -e "${CYAN}"
     echo "╔═══════════════════════════════════════════════════════════════════════╗"
     echo "║               Frappe/ERPNext Installation Script                     ║"
-    echo "║                        v2.0.0                                        ║"
+    echo "║                        v2.1.0                                        ║"
     echo "║                                                                   ║"
     echo "║  OS: Ubuntu 22.04, 24.04 LTS, Debian 11+                          ║"
     echo "║  Frappe: v14, v15, v16                                            ║"
@@ -520,6 +520,15 @@ EOF
 install_nodejs() {
     log_step "Installing Node.js $NODE_VERSION..."
     
+    # For v16, remove system nodejs that conflicts with nvm
+    if [[ "$FRAPPE_VERSION" == "16" ]]; then
+        if dpkg -l | grep -q "^ii.*nodejs.*"; then
+            log_info "Removing system nodejs (conflicts with nvm Node $NODE_VERSION)..."
+            sudo apt remove -y nodejs npm 2>/dev/null || true
+            sudo apt autoremove -y 2>/dev/null || true
+        fi
+    fi
+    
     if [[ ! -d "$HOME/.nvm" ]]; then
         log_info "Installing NVM..."
         curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.40.3/install.sh | bash
@@ -542,7 +551,7 @@ install_nodejs() {
         npm install -g yarn
     fi
     
-    log_success "Node.js installed"
+    log_success "Node.js installed: $(node -v), Yarn: $(yarn -v)"
 }
 
 install_bench() {
@@ -554,8 +563,14 @@ install_bench() {
         sudo rm -f /usr/local/bin/bench
     fi
     
+    # Remove old pip-installed bench packages
+    if [[ -d /usr/local/lib/python3.12/dist-packages/bench* ]]; then
+        log_info "Removing old pip-installed bench packages..."
+        sudo rm -rf /usr/local/lib/python3.12/dist-packages/bench*
+    fi
+    
     # Remove Debian's cmdtest/yarn package (wrong yarn)
-    if dpkg -l | grep -q cmdtest; then
+    if dpkg -l 2>/dev/null | grep -q cmdtest; then
         log_info "Removing Debian cmdtest package (wrong yarn)..."
         sudo apt remove -y cmdtest 2>/dev/null || true
     fi
@@ -566,6 +581,10 @@ install_bench() {
         if ! command -v uv &> /dev/null; then
             log_info "Installing uv..."
             curl -LsSf https://astral.sh/uv/install.sh | sh
+            
+            # Source cargo env for uv
+            [[ -s "$HOME/.cargo/env" ]] && \. "$HOME/.cargo/env"
+            
             export PATH="$HOME/.local/bin:$HOME/.cargo/bin:$PATH"
             if ! grep -q '.cargo/bin' "$HOME/.bashrc" 2>/dev/null; then
                 echo 'export PATH="$HOME/.local/bin:$HOME/.cargo/bin:$PATH"' >> "$HOME/.bashrc"
@@ -576,7 +595,7 @@ install_bench() {
         uv python install 3.14 --default
         
         log_info "Installing frappe-bench via uv tool..."
-        uv tool install frappe-bench
+        uv tool install frappe-bench --force
     else
         log_info "Upgrading pip..."
         pip3 install --upgrade pip --user 2>/dev/null || true
@@ -609,7 +628,7 @@ install_bench() {
     git config --global url."https://github.com/".insteadOf ssh://git@github.com/
     git config --global url."https://github.com/".insteadOf git@github.com:
     
-    log_success "Bench installed"
+    log_success "Bench installed: $(bench --version)"
 }
 
 ensure_nvm() {
