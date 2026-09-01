@@ -535,11 +535,30 @@ install_nodejs() {
     log_info "Installing Yarn..."
     npm install -g yarn
     
+    # Verify correct yarn is installed (not Debian's cmdtest)
+    if yarn --version 2>/dev/null | grep -q "cmdtest\|No such"; then
+        log_warn "Wrong yarn detected, reinstalling..."
+        sudo apt remove -y cmdtest 2>/dev/null || true
+        npm install -g yarn
+    fi
+    
     log_success "Node.js installed"
 }
 
 install_bench() {
     log_step "Installing Frappe Bench..."
+    
+    # Remove old pip-installed bench if it exists (conflicts with uv-installed bench)
+    if [[ -f /usr/local/bin/bench ]]; then
+        log_info "Removing old pip-installed bench at /usr/local/bin/bench..."
+        sudo rm -f /usr/local/bin/bench
+    fi
+    
+    # Remove Debian's cmdtest/yarn package (wrong yarn)
+    if dpkg -l | grep -q cmdtest; then
+        log_info "Removing Debian cmdtest package (wrong yarn)..."
+        sudo apt remove -y cmdtest 2>/dev/null || true
+    fi
     
     if [[ "$FRAPPE_VERSION" == "16" ]]; then
         log_info "Frappe v16: using uv for Python + bench management"
@@ -616,8 +635,8 @@ initialize_bench() {
     [[ -d "$HOME/frappe-bench" ]] && rm -rf "$HOME/frappe-bench"
     
     if [[ "$FRAPPE_VERSION" == "16" ]]; then
-        log_info "Running: bench init frappe-bench (uv manages Python automatically)"
-        bench init frappe-bench
+        log_info "Running: bench init frappe-bench --frappe-branch $FRAPPE_BRANCH"
+        bench init frappe-bench --frappe-branch "$FRAPPE_BRANCH"
     else
         local python_cmd="/usr/bin/python${PYTHON_VERSION}"
         log_info "Running: bench init frappe-bench --frappe-branch $FRAPPE_BRANCH --python $python_cmd"
