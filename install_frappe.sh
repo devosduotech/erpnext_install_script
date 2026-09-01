@@ -600,9 +600,9 @@ ensure_nvm() {
 }
 
 ensure_path() {
-    export PATH="$HOME/.local/bin:$PATH"
+    export PATH="$HOME/.local/bin:$HOME/.cargo/bin:$PATH"
     if ! grep -q '.local/bin' "$HOME/.bashrc" 2>/dev/null; then
-        echo 'export PATH="$HOME/.local/bin:$PATH"' >> "$HOME/.bashrc"
+        echo 'export PATH="$HOME/.local/bin:$HOME/.cargo/bin:$PATH"' >> "$HOME/.bashrc"
     fi
 }
 
@@ -665,7 +665,7 @@ install_apps() {
                 ;;
             crm)
                 log_info "Getting CRM..."
-                bench get-app https://github.com/frappe/crm.git --branch "$FRAPPE_BRANCH"
+                bench get-app https://github.com/frappe/crm.git
                 ;;
             payments)
                 log_info "Getting Payments..."
