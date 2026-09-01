@@ -30,7 +30,7 @@ generate_password() {
 declare -A VERSION_CONFIG=(
     ["14"]="version-14|3.10|18|10.6|latest"
     ["15"]="version-15|3.11|18|10.6|latest"
-    ["16"]="version-16|3.12|20|11.3|latest"
+    ["16"]="version-16|3.14|20|11.3|latest"
 )
 
 log_info() { echo -e "${BLUE}[INFO]${NC} $1"; }
@@ -363,7 +363,7 @@ install_system_dependencies() {
     elif [[ "$FRAPPE_VERSION" == "15" ]]; then
         PYTHON_PKGS="$PYTHON_PKGS python3.11-venv python3.11-dev"
     elif [[ "$FRAPPE_VERSION" == "16" ]]; then
-        PYTHON_PKGS="$PYTHON_PKGS python3.12-venv python3.12-dev"
+        PYTHON_PKGS="$PYTHON_PKGS python3.14-venv python3.14-dev"
     fi
     
     sudo apt install -y \
