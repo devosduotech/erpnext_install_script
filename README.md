@@ -75,13 +75,31 @@ su - frappe
 
 ### 2. Download & Run
 
+#### Option A: Direct Download (recommended for interactive use)
+
+Download just the script file without cloning the repo:
+
 ```bash
-# Interactive mode (prompts for all values):
+# Download the script
+wget -O install_frappe.sh https://raw.githubusercontent.com/devosduotech/erpnext_install_script/main/install_frappe.sh
+
+# Make executable
 chmod +x install_frappe.sh
+
+# Run interactive (prompts for all values):
 ./install_frappe.sh
 
 # Non-interactive (one-liner):
 ./install_frappe.sh --site erp.example.com --version 15
+```
+
+#### Option B: Clone Repository (for development/contributions)
+
+```bash
+git clone https://github.com/devosduotech/erpnext_install_script
+cd erpnext_install_script
+chmod +x install_frappe.sh
+./install_frappe.sh
 ```
 
 ---
